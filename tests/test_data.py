@@ -33,6 +33,7 @@ queries = [
         "platform_name": Platform.Sentinel1,
         "date": ("20200224", "20200225"),
         "aoi": aoi_4326,
+        "sensoroperationalmode": "IW",
         "cloud_cover": None,
         "returns_srcid": "S1A_IW_SLC__1SDV_20200224T052528_20200224T052555_031390_039CF2_BEA6",
         "returns_uuid": "8a611d5b-f9d9-437e-9f55-eca18cf79fd4",
@@ -43,6 +44,7 @@ queries = [
         "platform_name": Platform.Sentinel1,
         "date": ("20200502", "20200503"),
         "aoi": aoi_wkt,
+        "sensoroperationalmode": "IW",
         "cloud_cover": None,
         "returns_srcid": "S1A_IW_GRDH_1SDV_20200502T170726_20200502T170751_032389_03BFFF_3105",
         "returns_uuid": "a28e1042-f221-4716-8298-01bca35e6187",
@@ -122,17 +124,25 @@ class DownloadTest(unittest.TestCase):
             src.prep_aoi(1)
 
     # @unittest.skip("uncomment when you set ENVs with credentials")
-    def test_query_metadata(self):
+    def test_query_metadata(self, **kwargs):
         for i in range(len(queries)):
             with Source(datahub=queries[i]["datahub"], datadir=queries[i]["datadir"]) as src:
+                if queries[i]["datahub"] == Datahub.Scihub and queries[i]["platform_name"] == Platform.Sentinel1:
+                    kwargs["sensoroperationalmode"] = queries[i]["sensoroperationalmode"]
+
                 meta = src.query_metadata(
                     platform=queries[i]["platform_name"],
                     date=queries[i]["date"],
                     aoi=queries[i]["aoi"],
                     cloud_cover=queries[i]["cloud_cover"],
+                    **kwargs,
                 )
+
+                kwargs.pop("sensoroperationalmode", None)
+
                 meta.filter(filter_dict={"srcid": queries[i]["returns_srcid"]},)
                 meta.save(target_dir)
+
             returns_srcid = meta.to_geojson()[0]["properties"]["srcid"]
             returns_uuid = meta.to_geojson()[0]["properties"]["srcuuid"]
             self.assertEqual(returns_srcid, (queries[i]["returns_srcid"]))

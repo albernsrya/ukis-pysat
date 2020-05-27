@@ -79,7 +79,7 @@ class Source:
     def __enter__(self):
         return self
 
-    def query_metadata(self, platform, date, aoi, cloud_cover=None):
+    def query_metadata(self, platform, date, aoi, cloud_cover=None, **kwargs):
         """Queries satellite image metadata from data source.
 
         :param platform: Image platform (<enum 'Platform'>).
@@ -141,7 +141,6 @@ class Source:
         elif self.src == Datahub.EarthExplorer:
             # query Earthexplorer for metadata
             bbox = self.prep_aoi(aoi).bounds
-            kwargs = {}
             if cloud_cover:
                 kwargs["max_cloud_cover"] = cloud_cover[1]
             meta_src = self.api.search(
@@ -155,7 +154,6 @@ class Source:
 
         else:
             # query Scihub for metadata
-            kwargs = {}
             if cloud_cover and platform != platform.Sentinel1:
                 kwargs["cloudcoverpercentage"] = cloud_cover
             meta_src = self.api.query(area=self.prep_aoi(aoi).wkt, date=date, platformname=platform.value, **kwargs,)

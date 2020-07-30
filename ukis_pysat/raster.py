@@ -9,9 +9,11 @@ try:
     import numpy as np
     import rasterio
     import rasterio.mask
+    import rasterio.shutil
     from rasterio import windows
     from rasterio.dtypes import get_minimum_dtype
     from rasterio.io import MemoryFile
+    from rasterio.merge import merge
     from rasterio.plot import reshape_as_image, reshape_as_raster
     from rasterio.warp import calculate_default_transform, reproject
     from rio_toa import reflectance, brightness_temp, toa_utils
@@ -379,6 +381,14 @@ class Image:
 
         self.da_arr = da.from_array(self.__arr, chunks=chunk_size)
         return self.da_arr
+
+    @staticmethod
+    def build_mosaic(tiles):
+        """ builds a mosaic from a list of rasterio datasets
+        :param tiles: list of rasterio datasets
+        :return: tuple of merged numpy array and transform
+        """
+        return merge(tiles)
 
     def write_to_file(self, path_to_file, dtype, driver="GTiff", nodata=None, compress=None):
         """

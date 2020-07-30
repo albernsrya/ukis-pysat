@@ -4,6 +4,7 @@ import unittest
 
 import dask.array
 import numpy as np
+import rasterio.shutil
 from rasterio import windows
 from rasterio.coords import BoundingBox
 from rasterio.transform import from_bounds
@@ -12,6 +13,10 @@ from ukis_pysat.members import Platform
 from ukis_pysat.raster import Image
 
 TEST_FILE = os.path.join(os.path.dirname(__file__), "testfiles", "dummy.tif")
+TEST_VRT_TIFFS = [
+    os.path.join(os.path.dirname(__file__), "testfiles", "vrt", "vrt1.tif"),
+    os.path.join(os.path.dirname(__file__), "testfiles", "vrt", "vrt2.tif"),
+]
 
 
 class DataTest(unittest.TestCase):
@@ -61,7 +66,7 @@ class DataTest(unittest.TestCase):
 
     def test_arr(self):
         img_first = Image(TEST_FILE, dimorder="first")
-        img_first.mask(box(11.9027457562112939, 51.4664152338322580, 11.9477435281016131, 51.5009522690838750, ))
+        img_first.mask(box(11.9027457562112939, 51.4664152338322580, 11.9477435281016131, 51.5009522690838750,))
         self.assertEqual(img_first.arr.shape, (1, 385, 502))
         self.assertEqual(
             str(img_first.dataset.transform),
@@ -79,7 +84,7 @@ class DataTest(unittest.TestCase):
         img_first.close()
 
         img_last = Image(TEST_FILE, dimorder="last")
-        img_last.mask(box(11.9027457562112939, 51.4664152338322580, 11.9477435281016131, 51.5009522690838750, ))
+        img_last.mask(box(11.9027457562112939, 51.4664152338322580, 11.9477435281016131, 51.5009522690838750,))
         self.assertEqual(img_last.arr.shape, (385, 502, 1))
         self.assertEqual(
             str(img_last.dataset.transform),
@@ -120,7 +125,7 @@ class DataTest(unittest.TestCase):
         with self.assertRaises(TypeError, msg="bbox must be of type tuple or Shapely Polygon"):
             self.img.mask([1, 2, 3])
 
-        self.img.mask(box(11.9027457562112939, 51.4664152338322580, 11.9477435281016131, 51.5009522690838750, ))
+        self.img.mask(box(11.9027457562112939, 51.4664152338322580, 11.9477435281016131, 51.5009522690838750,))
         self.assertEqual(
             self.img.dataset.bounds,
             BoundingBox(
@@ -258,6 +263,21 @@ class DataTest(unittest.TestCase):
         self.assertTrue(np.array_equal(img4.arr, self.img.arr))
         img4.close()
         os.remove(r"result.tif")
+
+    def test_mosaic(self):
+        src = Image(os.path.join(os.path.dirname(__file__), "testfiles", "vrt", "source.tif"))
+        array, transform = src.build_mosaic([Image(item).dataset for item in TEST_VRT_TIFFS])
+        src.close()
+
+        target = Image(array, crs=src.dataset.crs, transform=transform)
+        target.write_to_file(os.path.join(os.path.dirname(__file__), "testfiles", "vrt", "result.tif"), dtype="int16")
+
+        mosaic = Image(os.path.join(os.path.dirname(__file__), "testfiles", "vrt", "mosaic.tif"))
+        self.assertTrue(np.array_equal(mosaic.arr, target.arr))
+
+        mosaic.close()
+        target.close()
+        os.remove(os.path.join(os.path.dirname(__file__), "testfiles", "vrt", "result.tif"))
 
 
 if __name__ == "__main__":

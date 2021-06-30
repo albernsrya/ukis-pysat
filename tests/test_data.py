@@ -28,12 +28,16 @@ class DataTest(unittest.TestCase):
             self.assertTrue(isinstance(src.api, pystac.catalog.Catalog))
 
     def test_init_stac_url(self):
-        with Source(datahub=Datahub.STAC_API, url=r"https://earth-search.aws.element84.com/v0/") as src:
-            self.assertEqual(src.api.url, r"https://earth-search.aws.element84.com/v0/")
+        with Source(datahub=Datahub.STAC_API,
+                    url=r"https://earth-search.aws.element84.com/v0/") as src:
+            self.assertEqual(src.api.url,
+                             r"https://earth-search.aws.element84.com/v0/")
 
     def test_init_exception_other_hub(self):
         with self.assertRaises(
-            NotImplementedError, msg=f"Hub is not supported [STAC_local, STAC_API, EarthExplorer, " f"Scihub]."
+                NotImplementedError,
+                msg=f"Hub is not supported [STAC_local, STAC_API, EarthExplorer, "
+                f"Scihub].",
         ):
             Source(datahub="Hub")
 
@@ -43,24 +47,29 @@ class DataTest(unittest.TestCase):
 
     def test_exception_false_aoi(self):
         with Source(datahub=Datahub.STAC_local, catalog=catalog_path) as src:
-            with self.assertRaises(TypeError, msg=f"aoi must be of type string or tuple"):
+            with self.assertRaises(TypeError,
+                                   msg=f"aoi must be of type string or tuple"):
                 src._prep_aoi(1)
 
     def test_aoi_geointerface(self):
-        geom = Source._prep_aoi(
-            {
-                "type": "Polygon",
-                "coordinates": (
-                    ((0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (2.0, -1.0), (0.0, 0.0)),
-                    ((0.1, 0.1), (0.1, 0.2), (0.2, 0.2), (0.2, 0.1), (0.1, 0.1)),
-                ),
-            }
-        )
+        geom = Source._prep_aoi({
+            "type":
+            "Polygon",
+            "coordinates": (
+                ((0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (2.0, -1.0), (0.0, 0.0)),
+                ((0.1, 0.1), (0.1, 0.2), (0.2, 0.2), (0.2, 0.1), (0.1, 0.1)),
+            ),
+        })
         self.assertIsInstance(geom, Polygon)
-        self.assertEqual(tuple(geom.exterior.coords), ((0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (2.0, -1.0), (0.0, 0.0)))
+        self.assertEqual(
+            tuple(geom.exterior.coords),
+            ((0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (2.0, -1.0), (0.0, 0.0)),
+        )
         self.assertEqual(len(geom.interiors), 1)
 
-    @unittest.skip("Skip until we find a better test or this also runs with Github Actions")
+    @unittest.skip(
+        "Skip until we find a better test or this also runs with Github Actions"
+    )
     def test_query_metadata_stac_local(self):
         with Source(datahub=Datahub.STAC_local, catalog=catalog_path) as src:
             meta = src.query_metadata(
@@ -72,8 +81,10 @@ class DataTest(unittest.TestCase):
             cat = src._init_catalog()
             for item in meta:
                 cat.add_item(item)
-            item = cat.get_item("S2A_MSIL1C_20200221T102041_N0209_R065_T32UPC_20200221T110731")
-            self.assertEqual(item.properties.get("srcuuid"), "ae674e64-013d-4898-a6d7-096d7b02bdde")
+            item = cat.get_item(
+                "S2A_MSIL1C_20200221T102041_N0209_R065_T32UPC_20200221T110731")
+            self.assertEqual(item.properties.get("srcuuid"),
+                             "ae674e64-013d-4898-a6d7-096d7b02bdde")
             cat.normalize_hrefs(Path(gettempdir()).as_posix())
             cat.validate_all()
 
@@ -93,8 +104,11 @@ class DataTest(unittest.TestCase):
             cat = src._init_catalog()
             for item in meta:
                 cat.add_item(item)
-            item = cat.get_item("S1A_IW_SLC__1SDV_20200224T052528_20200224T052555_031390_039CF2_BEA6")
-            self.assertEqual(item.properties.get("srcuuid"), "8a611d5b-f9d9-437e-9f55-eca18cf79fd4")
+            item = cat.get_item(
+                "S1A_IW_SLC__1SDV_20200224T052528_20200224T052555_031390_039CF2_BEA6"
+            )
+            self.assertEqual(item.properties.get("srcuuid"),
+                             "8a611d5b-f9d9-437e-9f55-eca18cf79fd4")
             cat.normalize_hrefs(Path(gettempdir()).as_posix())
             cat.validate_all()
 
@@ -124,7 +138,8 @@ class DataTest(unittest.TestCase):
             for item in meta:
                 cat.add_item(item)
             item = cat.get_item("LC08_L1TP_193024_20200322_20200326_01_T1")
-            self.assertEqual(item.properties.get("srcuuid"), "LC81930242020082LGN00")
+            self.assertEqual(item.properties.get("srcuuid"),
+                             "LC81930242020082LGN00")
             cat.normalize_hrefs(Path(gettempdir()).as_posix())
             cat.validate_all()
 
@@ -142,8 +157,11 @@ class DataTest(unittest.TestCase):
             cat = src._init_catalog()
             for item in meta:
                 cat.add_item(item)
-        item = cat.get_item("S1A_IW_SLC__1SDV_20200224T052528_20200224T052555_031390_039CF2_BEA6")
-        self.assertEqual(item.properties.get("srcuuid"), "8a611d5b-f9d9-437e-9f55-eca18cf79fd4")
+        item = cat.get_item(
+            "S1A_IW_SLC__1SDV_20200224T052528_20200224T052555_031390_039CF2_BEA6"
+        )
+        self.assertEqual(item.properties.get("srcuuid"),
+                         "8a611d5b-f9d9-437e-9f55-eca18cf79fd4")
         cat.normalize_hrefs(Path(gettempdir()).as_posix())
         item.validate()
 
@@ -184,7 +202,8 @@ class DataTest(unittest.TestCase):
                 cat.add_item(item)
 
         item = cat.get_item("LC08_L1TP_193024_20200322_20200326_01_T1")
-        self.assertEqual(item.properties.get("srcuuid"), "LC81930242020082LGN00")
+        self.assertEqual(item.properties.get("srcuuid"),
+                         "LC81930242020082LGN00")
         cat.normalize_hrefs(Path(gettempdir()).as_posix())
         item.validate()
 

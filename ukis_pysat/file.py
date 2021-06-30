@@ -159,8 +159,7 @@ def get_footprint_from_manifest(xml_path: Union[str, Path]) -> Any:
         for child in elem.iter():
             if child.tag == "{http://www.opengis.net/gml}coordinates":
                 coords = child.text
-                if coords is None:
-                    raise AssertionError("Footprint not found")
+                assert coords is not None, "Footprint not found"
                 vertices: List = []
                 for i in coords.split(" "):
                     c = i.split(",")
@@ -224,8 +223,7 @@ def get_pixel_spacing(scenedir: Union[str, Path], polarization: str = "HH") -> T
             for elem in root.iter("imageInformation"):
                 for child in elem.iter():
                     if child.tag == "rangePixelSpacing":
-                        if child.text is None:
-                            raise AssertionError("Pixel Spacing not found.")
+                        assert child.text is not None, "Pixel Spacing not found."
                         pixel_spacing_meter = float(child.text)
                         pixel_spacing_degree = (pixel_spacing_meter / 10.0) * 8.983152841195215e-5
 

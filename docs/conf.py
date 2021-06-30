@@ -16,13 +16,10 @@ import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
-
 # -- Project information -----------------------------------------------------
 
 project = "ukis_pysat"
-copyright = (
-    "2020, German Aerospace Center (DLR) * German Remote Sensing Data Center * Department: Geo-Risks and Civil Security"
-)
+copyright = "2020, German Aerospace Center (DLR) * German Remote Sensing Data Center * Department: Geo-Risks and Civil Security"
 author = "Boehnke, Christian; Fichtner, Florian; Mandery, Nico; Wieland, Marc"
 
 # The full version, including alpha/beta/rc tags
@@ -36,7 +33,9 @@ autoclass_content = "both"
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.autosummary", "sphinx.ext.napoleon"]
+extensions = [
+    "sphinx.ext.autodoc", "sphinx.ext.autosummary", "sphinx.ext.napoleon"
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -45,7 +44,6 @@ templates_path = ["_templates"]
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
-
 
 # -- Options for HTML output -------------------------------------------------
 

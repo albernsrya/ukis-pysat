@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
-
 import datetime
+import hashlib
+import json
+import os
 import shutil
 import uuid
+from datetime import datetime as dt
 from io import BytesIO
 from pathlib import Path
 
+from pydantic import BaseModel
 from dateutil.parser import parse
+from tqdm import tqdm
 
 from ukis_pysat.stacapi import StacApi
 
@@ -29,6 +34,217 @@ except ImportError as e:
 
 from ukis_pysat.file import env_get
 from ukis_pysat.members import Datahub
+
+
+def meta_from_pid(product_id):
+    """Extract metadata contained in a Landsat Product Identifier."""
+    meta = {}
+    parts = product_id.split("_")
+    meta["product_id"] = product_id
+    meta["sensor"], meta["correction"] = parts[0], parts[1]
+    meta["path"], meta["row"] = int(parts[2][:3]), int(parts[2][3:])
+    meta["acquisition_date"] = dt.strptime(parts[3], "%Y%m%d")
+    meta["processing_date"] = dt.strptime(parts[4], "%Y%m%d")
+    meta["collection"], meta["tier"] = int(parts[5]), parts[6]
+    return meta
+
+
+def compute_md5(fpath):
+    """Get hexadecimal MD5 hash of a file."""
+    with open(fpath, "rb") as f:
+        h = hashlib.md5(f.read())
+    return h.hexdigest()
+
+
+def download_files(url, outdir, progressbar=False, verify=False):
+    """Download a file from an URL into a given directory.
+
+    Parameters
+    ----------
+    url : str
+        File to download.
+    outdir : str
+        Path to output directory.
+    progressbar : bool, optional
+        Display a progress bar.
+    verify : bool, optional
+        Check that remote and local MD5 haches are equal.
+
+    Returns
+    -------
+    fpath : str
+        Path to downloaded file.
+    """
+    fname = url.split("/")[-1]
+    fpath = os.path.join(outdir, fname)
+    r = requests.get(url, stream=True)
+    remotesize = int(r.headers.get("Content-Length", 0))
+    etag = r.headers.get("ETag", "").replace('"', "")
+
+    if r.status_code != 200:
+        raise requests.exceptions.HTTPError(str(r.status_code))
+
+    if os.path.isfile(fpath) and os.path.getsize(fpath) == remotesize:
+        return fpath
+    if progressbar:
+        progress = tqdm(total=remotesize, unit="B", unit_scale=True)
+        progress.set_description(fname)
+    with open(fpath, "wb") as f:
+        for chunk in r.iter_content(chunk_size=1024 * 1024):
+            if chunk:
+                f.write(chunk)
+                if progressbar:
+                    progress.update(1024 * 1024)
+
+    r.close()
+    if progressbar:
+        progress.close()
+
+    if verify:
+        if not compute_md5(fpath) == etag:
+            raise requests.exceptions.HTTPError("Download corrupted.")
+
+    return fpath
+
+
+class Dataset(BaseModel):
+    """List of the bands available from the Landsat Datasets"""
+
+    LC08: list
+    LE07: list
+    LT05: list
+    LM04: list
+    LM03: list
+    LM02: list
+    LM01: list
+
+
+m = Dataset(
+    LC08=[
+        "B1.TIF",
+        "B2.TIF",
+        "B3.TIF",
+        "B4.TIF",
+        "B5.TIF",
+        "B6.TIF",
+        "B7.TIF",
+        "B8.TIF",
+        "B9.TIF",
+        "B10.TIF",
+        "B11.TIF",
+        "BQA.TIF",
+        "MTL.txt",
+        "ANG.txt",
+    ],
+    LE07=[
+        "B1.TIF",
+        "B2.TIF",
+        "B3.TIF",
+        "B4.TIF",
+        "B5.TIF",
+        "B6_VCID_1.TIF",
+        "B6_VCID_2.TIF",
+        "B7.TIF",
+        "B8.TIF",
+        "BQA.TIF",
+        "GCP.txt",
+        "MTL.txt",
+        "ANG.txt",
+        "README.GTF",
+    ],
+    LT05=[
+        "B1.TIF",
+        "B2.TIF",
+        "B3.TIF",
+        "B4.TIF",
+        "B5.TIF",
+        "B6.TIF",
+        "B7.TIF",
+        "BQA.TIF",
+        "GCP.txt",
+        "MTL.txt",
+        "VER.txt",
+        "README.GTF",
+        "ANG.txt",
+    ],
+    LM04=["B1.TIF", "B2.TIF", "B3.TIF", "B4.TIF", "BQA.TIF", "GCP.txt", "MTL.txt", "VER.txt", "README.GTF"],
+    LM03=["B4.TIF", "B5.TIF", "B6.TIF", "B7.TIF", "BQA.TIF", "MTL.txt", "README.GTF"],
+    LM02=["B4.TIF", "B5.TIF", "B6.TIF", "B7.TIF", "BQA.TIF", "MTL.txt", "README.GTF"],
+    LM01=["B4.TIF", "B5.TIF", "B6.TIF", "B7.TIF", "BQA.TIF", "MTL.txt", "README.GTF"],
+)
+Landsat_bands = m.json()
+
+
+class Product:
+    """It provides methods for checking the list of the available Geotiff Landsat bands  and download them  by
+    using the product_id and BASE_URL"""
+
+    """Extracted from the pylandsat"""
+
+    def __init__(self, product_id):
+        """Initialize a product download.
+
+        Attributes
+        ----------
+        product_id : str
+            Landsat product identifier.
+        out_dir : str
+            Path to output directory.
+        """
+
+        BASE_URL = (
+            "https://storage.googleapis.com/gcp-public-data-landsat/"
+            "{sensor}/{collection:02}/{path:03}/{row:03}/{product_id}/"
+        )
+
+        self.product_id = product_id
+        self.meta = meta_from_pid(product_id)
+        self.baseurl = BASE_URL.format(**self.meta)
+
+    @property
+    def available(self):
+        """List all available files."""
+        # resource = resource_string(__dict__, a)#"files.json")
+        labels = json.loads(Landsat_bands)
+        return labels[self.meta["sensor"]]
+
+    def _url(self, label):
+        """Get download URL of a given file according to its label."""
+        if "README" in label:
+            basename = label
+        else:
+            basename = self.product_id + "_" + label
+        return self.baseurl + basename
+
+    def download(self, out_dir, progressbar=True, files=None, verify=True):
+        """Download a Landsat product.
+
+        Parameters
+        ----------
+        out_dir : str
+            Path to output directory. A subdirectory named after the
+            product ID will automatically be created.
+        progressbar : bool, optional
+            Show a progress bar.
+        files : list of str, optional
+            Specify the files to download manually. By default, all available
+            files will be downloaded.
+        verify : bool, optional
+            Check downloaded files for corruption (True by default).
+        """
+        dst_dir = os.path.join(out_dir, self.product_id)
+        os.makedirs(dst_dir, exist_ok=True)
+        if not files:
+            files = self.available
+        else:
+            files = [f for f in files if f in self.available]
+
+        for label in files:
+            if ".tif" in label:
+                label = label.replace(".tif", ".TIF")
+            url = self._url(label)
+            download_files(url, dst_dir, progressbar=progressbar, verify=verify)
+            r = requests.get(url, stream=True)
 
 
 class Source:
@@ -299,7 +515,6 @@ class Source:
 
         elif self.src == Datahub.EarthExplorer:
             if not Path(target_dir.joinpath(product_uuid + ".zip")).is_file():
-                from pylandsat import Product
 
                 # download data from GCS if file does not already exist
                 product = Product(product_uuid)
@@ -398,7 +613,6 @@ class Source:
                     project = pyproj.Transformer.from_proj(
                         proj_from=pyproj.Proj(aoi.crs["init"]),
                         proj_to=pyproj.Proj("epsg:4326"),
-                        skip_equivalent=True,
                         always_xy=True,
                     )
                     aoi = ops.transform(project.transform, geometry.shape(aoi[0]["geometry"]))

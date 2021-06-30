@@ -2,8 +2,7 @@
 import codecs
 import os
 
-from setuptools import setup, find_packages
-
+from setuptools import find_packages, setup
 
 with open(r"README.md", encoding="utf8") as f:
     long_description = f.read()
@@ -42,23 +41,21 @@ extras_require = {
         "shapely",
     ],
 }
-extras_require["complete"] = list(set([v for req in extras_require.values() for v in req]))
+extras_require["complete"] = list(
+    set([v for req in extras_require.values() for v in req]))
 
-extras_require["dev"] = sorted(
-    extras_require["complete"]
-    + [
-        "dask[array]",
-        "fiona",
-        "landsatxplore>=0.13.0",
-        "pandas",
-        "pylandsat>=0.6.0",
-        "pyproj>=3.0.0",
-        "requests_mock",
-        "utm>=0.7.0",
-        "sphinx >= 1.3",
-        "sphinx_rtd_theme",
-    ]
-)
+extras_require["dev"] = sorted(extras_require["complete"] + [
+    "dask[array]",
+    "fiona",
+    "landsatxplore>=0.13.0",
+    "pandas",
+    "pylandsat>=0.6.0",
+    "pyproj>=3.0.0",
+    "requests_mock",
+    "utm>=0.7.0",
+    "sphinx >= 1.3",
+    "sphinx_rtd_theme",
+])
 
 setup(
     name="ukis-pysat",
